@@ -6,4 +6,4 @@
 
 ## Documentation
 
-See the [documentation](https://odomlab2.github.io/sci-rocket/) for more information on how to install, configure and run the workflow.
+See the [documentation](https://lauren-saunders-lab.github.io/sci-rocket/) for more information on how to install, configure and run the workflow.
