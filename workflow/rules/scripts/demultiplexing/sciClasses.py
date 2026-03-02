@@ -425,7 +425,7 @@ class sciRecord:
                         if len(result) == 1:
                             self.hashing_sequence = result[0]
                             self.hashing_name = dict_hashing[self.sample_name]["sheet"][self.hashing_sequence]
-                            self.hashing_status = "Corrected (Upstream)"
+                            self.hashing_status = "Corrected upstream"
 
     # Define hidden methods. ---------------------------------------------------
 

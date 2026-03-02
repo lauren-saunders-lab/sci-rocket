@@ -41,7 +41,7 @@ def test_sci_dash_data():
     assert "ZAe-14hpf-28" in data["hashing"]
     assert data["hashing"]["ZAe-14hpf-28"]["10uM_P7_A8"]["n_correct"] == 111
     assert data["hashing"]["ZAe-14hpf-28"]["10uM_P7_A8"]["n_corrected"] == 23
-    assert data["hashing"]["ZAe-14hpf-28"]["10uM_P7_A8"]["n_correct_upstream"] == 0
+    assert data["hashing"]["ZAe-14hpf-28"]["10uM_P7_A8"]["n_correct_upstream"] == 3
 
     assert data["rt_barcode_counts"]["P01"][0] == {'row': 'D', 'col': '9', 'frequency': 1112}
     assert data["rt_barcode_counts"]["P01"][1] == {'row': 'B', 'col': '8', 'frequency': 830}
