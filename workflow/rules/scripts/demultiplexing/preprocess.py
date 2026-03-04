@@ -45,6 +45,10 @@ def retrieve_barcodes(log: logging.Logger, requested_barcodes: pd.Series, availa
         list or boolean: List of all requested barcodes if the sanity check passed, False otherwise.
     """
 
+    # If IGNORE is specified, return it as-is (resolved later in demux_rocket.py).
+    if list(requested_barcodes) == ["IGNORE"]:
+        return ["IGNORE"]
+
     # Get all the available barcodes of the requested type.
     available_barcodes = available_barcodes.query("type == @barcode_type")["barcode"].unique()
 
@@ -163,6 +167,24 @@ def sanity_samples(log, samples, barcodes, config):
 
     if not indexes_p5 or not indexes_p7 or not indexes_rt:
         return False
+
+    # Validate IGNORE usage for p5/p7 per experiment.
+    for experiment_name, samples_exp in samples.groupby("experiment_name"):
+        for barcode_type in ["p5", "p7"]:
+            values = samples_exp[barcode_type].unique()
+            has_ignore = "IGNORE" in values
+            if has_ignore and len(values) > 1:
+                log.error(
+                    "Sanity check (Sample sheet) - {} is set to IGNORE for some samples but not all in "
+                    "experiment {}. IGNORE must be used for all samples in that experiment or none."
+                    .format(barcode_type.upper(), experiment_name)
+                )
+                return False
+
+        if samples_exp["p5"].unique().tolist() == ["IGNORE"] and samples_exp["p7"].unique().tolist() == ["IGNORE"]:
+            log.error("Sanity check (Sample sheet) - Both P5 and P7 cannot be set to IGNORE in experiment {}."
+                      .format(experiment_name))
+            return False
 
     # endregion -------------------------------------------------------------------------------------
 
