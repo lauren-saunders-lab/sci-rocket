@@ -114,3 +114,106 @@ def test_get_samples_ignores_comment_lines(test_config: dict):
 
     assert len(samples) == 2
     assert set(samples["sample_name"]) == {"sample1", "sample2"}
+
+# --- IGNORE barcode tests ---
+
+
+class TestRetrieveBarcodesIgnore:
+    """Tests for IGNORE handling in retrieve_barcodes()."""
+
+    def test_ignore_returns_ignore_list(self):
+        """retrieve_barcodes returns ["IGNORE"] when given "IGNORE"."""
+        log = preprocess.init_logger()
+        barcodes = pd.DataFrame({"type": ["p5"], "barcode": ["A01"], "sequence": ["CGTTCTATCA"]})
+        result = preprocess.retrieve_barcodes(log, pd.Series(["IGNORE"]), barcodes, "p5")
+        assert result == ["IGNORE"]
+
+
+class TestSanitySamplesIgnore:
+    """Tests for IGNORE validation in sanity_samples()."""
+
+    @pytest.fixture
+    def log(self):
+        return preprocess.init_logger()
+
+    @pytest.fixture
+    def barcodes(self):
+        return pd.DataFrame({
+            "type": ["p5", "p5", "p7", "p7", "ligation", "rt"],
+            "barcode": ["A01", "A02", "A01", "A02", "LIG1", "P01-A01"],
+            "sequence": ["CGTTCTATCA", "AATTCCGGAA", "CTAAGCCTTG", "GGAATTCCAA", "ACTTGATTGT", "GCCGCAACGA"],
+        })
+
+    @pytest.fixture
+    def config(self):
+        return {"species": {"mouse": {"genome": "", "genome_gtf": "", "star_index": ""}}}
+
+    def test_ignore_p5_all_samples_passes(self, log, barcodes, config):
+        """sanity_samples passes when p5 is IGNORE for all samples."""
+        samples = pd.DataFrame({
+            "experiment_name": ["exp", "exp"],
+            "p5": ["IGNORE", "IGNORE"],
+            "p7": ["A01", "A02"],
+            "rt": ["P01-A01", "P01-A01"],
+            "sample_name": ["s1", "s2"],
+            "species": ["mouse", "mouse"],
+            "n_expected_cells": ["1000", "1000"],
+            "path_reads": ["/a", "/b"],
+        })
+        assert preprocess.sanity_samples(log, samples, barcodes, config) is True
+
+    def test_ignore_p5_mixed_fails(self, log, barcodes, config):
+        """sanity_samples fails when IGNORE is mixed with real p5 values."""
+        samples = pd.DataFrame({
+            "experiment_name": ["exp", "exp"],
+            "p5": ["IGNORE", "A01"],
+            "p7": ["A01", "A02"],
+            "rt": ["P01-A01", "P01-A01"],
+            "sample_name": ["s1", "s2"],
+            "species": ["mouse", "mouse"],
+            "n_expected_cells": ["1000", "1000"],
+            "path_reads": ["/a", "/b"],
+        })
+        assert preprocess.sanity_samples(log, samples, barcodes, config) is False
+
+    def test_ignore_p5_mixed_between_experiments_passes(self, log, barcodes, config):
+        """sanity_samples passes when IGNORE and real p5 values are separated by experiment."""
+        samples = pd.DataFrame({
+            "experiment_name": ["exp_ignore", "exp_ignore", "exp_real", "exp_real"],
+            "p5": ["IGNORE", "IGNORE", "A01", "A02"],
+            "p7": ["A01", "A02", "A01", "A02"],
+            "rt": ["P01-A01", "P01-A01", "P01-A01", "P01-A01"],
+            "sample_name": ["s1", "s2", "s3", "s4"],
+            "species": ["mouse", "mouse", "mouse", "mouse"],
+            "n_expected_cells": ["1000", "1000", "1000", "1000"],
+            "path_reads": ["/a", "/b", "/c", "/d"],
+        })
+        assert preprocess.sanity_samples(log, samples, barcodes, config) is True
+
+    def test_ignore_both_p5_and_p7_in_single_experiment_fails(self, log, barcodes, config):
+        """sanity_samples fails when both P5 and P7 are IGNORE in one experiment."""
+        samples = pd.DataFrame({
+            "experiment_name": ["exp_bad", "exp_bad", "exp_ok"],
+            "p5": ["IGNORE", "IGNORE", "A01"],
+            "p7": ["IGNORE", "IGNORE", "A01"],
+            "rt": ["P01-A01", "P01-A01", "P01-A01"],
+            "sample_name": ["s1", "s2", "s3"],
+            "species": ["mouse", "mouse", "mouse"],
+            "n_expected_cells": ["1000", "1000", "1000"],
+            "path_reads": ["/a", "/b", "/c"],
+        })
+        assert preprocess.sanity_samples(log, samples, barcodes, config) is False
+
+    def test_ignore_both_p5_and_p7_fails(self, log, barcodes, config):
+        """sanity_samples fails when both P5 and P7 are IGNORE."""
+        samples = pd.DataFrame({
+            "experiment_name": ["exp", "exp"],
+            "p5": ["IGNORE", "IGNORE"],
+            "p7": ["IGNORE", "IGNORE"],
+            "rt": ["P01-A01", "P01-A01"],
+            "sample_name": ["s1", "s2"],
+            "species": ["mouse", "mouse"],
+            "n_expected_cells": ["1000", "1000"],
+            "path_reads": ["/a", "/b"],
+        })
+        assert preprocess.sanity_samples(log, samples, barcodes, config) is False

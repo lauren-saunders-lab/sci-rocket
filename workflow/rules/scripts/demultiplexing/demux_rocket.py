@@ -378,6 +378,39 @@ def retrieve_hashing_sheets(samples: pd.DataFrame):
     return hashing
 
 
+def auto_detect_barcode(path_r1: str, barcodes: pd.DataFrame, barcode_type: str, log: logging.Logger):
+    """
+    Auto-detect the P5 or P7 barcode from the first read of a FASTQ file.
+
+    Reads the first read's header comment to extract the barcode sequence,
+    then looks it up in the barcode table to determine the barcode name.
+
+    For P5: the sequence in the header is reverse-complemented, so we RC it back.
+    For P7: the sequence is used as-is.
+    """
+    _rc = str.maketrans("ATCG", "TAGC")
+
+    with pysam.FastxFile(path_r1) as fh:
+        read = next(fh)
+        p7_seq, p5_seq = read.comment.split(":")[-1].split("+")
+
+    if barcode_type == "p5":
+        seq = p5_seq[::-1].translate(_rc)  # RC back to original orientation
+    else:
+        seq = p7_seq
+
+    # Look up in barcode table.
+    match = barcodes.query("type == @barcode_type & sequence == @seq")
+
+    if match.empty:
+        log.error("Auto-detect %s: sequence %s from first read does not match any known barcode.", barcode_type.upper(), seq)
+        sys.exit(1)
+
+    barcode_name = match.iloc[0]["barcode"]
+    log.info("Auto-detected %s barcode: %s (sequence: %s)", barcode_type.upper(), barcode_name, seq)
+    return barcode_name
+
+
 def sciseq_sample_demultiplexing(
     log: logging.Logger,
     experiment_name: str,
@@ -415,6 +448,20 @@ def sciseq_sample_demultiplexing(
     # Subset samples used for matching and QC in this experiment.
     samples_exp = samples.query("experiment_name == @experiment_name")
 
+    # Resolve IGNORE barcodes from the first read.
+    ignore_p5 = bool((samples_exp["p5"] == "IGNORE").all())
+    ignore_p7 = bool((samples_exp["p7"] == "IGNORE").all())
+
+    if ignore_p5:
+        detected = auto_detect_barcode(path_r1, barcodes, "p5", log)
+        samples_exp = samples_exp.copy()
+        samples_exp["p5"] = detected
+
+    if ignore_p7:
+        detected = auto_detect_barcode(path_r1, barcodes, "p7", log)
+        samples_exp = samples_exp.copy()
+        samples_exp["p7"] = detected
+
     # Open the IO handlers.
     dict_fh = open_file_handlers(samples, experiment_name, path_r1, path_r2, path_out, log)
 
@@ -432,6 +479,8 @@ def sciseq_sample_demultiplexing(
 
     # Initialize the QC dictionary.
     qc = init_qc(experiment_name, dict_barcodes, samples_exp, dict_hashing)
+    qc["ignore_p5"] = ignore_p5
+    qc["ignore_p7"] = ignore_p7
 
     # Iterate over the read-pairs and search for the barcodes within R1.
     # If any barcode is not found, try to rescue a respective barcode sequence with 1bp mismatch.

@@ -1,3 +1,6 @@
+import json
+import pickle
+import numpy as np
 import pytest
 import pandas as pd
 
@@ -6,6 +9,7 @@ from workflow.rules.scripts.demultiplexing.demux_dash import (
     calculate_hashing_bin_summary,
     calculate_hashing_summary,
     calculate_hashing_summary_filtered,
+    combine_logs,
     parse_summary_metrics,
     resolve_solo_feature_paths,
 )
@@ -192,3 +196,65 @@ def test_resolve_solo_feature_paths_falls_back_to_gene(tmp_path):
     assert resolved["summary"] == gene_dir / "Summary.csv"
     assert resolved["cellreads"] == gene_dir / "CellReads.stats"
     assert resolved["filtered_barcodes"] == gene_dir / "filtered" / "barcodes.tsv"
+
+
+def test_combine_logs_casts_ignore_flags_to_json_bools(tmp_path):
+    path_star = tmp_path / "alignment"
+    path_hashing = tmp_path / "hashing" / "hashing_metrics.tsv"
+    path_benchmarks = tmp_path / "benchmarks"
+    path_benchmarks.mkdir()
+
+    sample = "sample_a"
+    gene_dir = path_star / f"{sample}_Zebrafish_Solo.out" / "Gene"
+    (gene_dir / "filtered").mkdir(parents=True)
+    (gene_dir / "Summary.csv").write_text(
+        "\n".join(
+            [
+                "Number of Reads,10",
+                "Sequencing Saturation,0.5",
+                "Reads Mapped to Genome: Unique+Multiple,0.9",
+                "Reads Mapped to Genome: Unique,0.8",
+                "Reads Mapped to Gene: Unique+Multiple Gene,0.7",
+                "Reads Mapped to Gene: Unique Gene,0.6",
+                "Estimated Number of Cells,1",
+                "Mean Reads per Cell,10",
+                "Mean UMI per Cell,5",
+                "Mean Gene per Cell,3",
+            ]
+        )
+        + "\n"
+    )
+    (gene_dir / "CellReads.stats").write_text(
+        "CB\tcbMatch\tgenomeU\tgenomeM\texonic\tintronic\texonicAS\tintronicAS\tmito\n"
+        "A\t1\t1\t1\t1\t1\t0\t0\t0\n"
+    )
+    (gene_dir / "filtered" / "barcodes.tsv").write_text("A\n")
+
+    qc = {
+        "experiment_name": "exp1",
+        "version": "test",
+        "ignore_p5": np.bool_(True),
+        "ignore_p7": np.bool_(False),
+        "n_pairs_total": 1,
+        "n_pairs_success": 1,
+        "sample_success": {sample: {}},
+        "uncorrectable_p5": {},
+        "uncorrectable_p7": {},
+        "uncorrectable_ligation": {},
+        "uncorrectable_rt": {},
+        "p5_index_counts": {"A01": 1},
+        "p7_index_counts": {"A01": 1},
+        "rt_barcode_counts": {"A": {"01": 1}},
+        "ligation_barcode_counts": {"LIG1": 1},
+        "uncorrectables_sankey": {(False, False, False, False): 1},
+    }
+
+    path_pickle = tmp_path / "qc.pickle"
+    with open(path_pickle, "wb") as handle:
+        pickle.dump(qc, handle)
+
+    qc_json = combine_logs(path_pickle, path_star, path_hashing, path_benchmarks)
+
+    assert isinstance(qc_json["ignore_p5"], bool)
+    assert isinstance(qc_json["ignore_p7"], bool)
+    json.dumps(qc_json)

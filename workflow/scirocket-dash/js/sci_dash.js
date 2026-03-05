@@ -19,6 +19,18 @@ document.querySelectorAll(".copy-btn").forEach(btn => {
     });
 });
 
+// Hide charts for ignored barcodes.
+document.addEventListener("DOMContentLoaded", function () {
+  if (data.ignore_p5) {
+    document.getElementById("container-well-p5").style.display = "none";
+    document.getElementById("container-uncorrectables-p5").style.display = "none";
+  }
+  if (data.ignore_p7) {
+    document.getElementById("container-well-p7").style.display = "none";
+    document.getElementById("container-uncorrectables-p7").style.display = "none";
+  }
+});
+
 // Helper function to create an element with class and innerHTML
 const createElement = (type, className, innerHTML) => {
   const element = document.createElement(type);
@@ -172,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("n_total_pairs").innerHTML = Intl.NumberFormat("en-US").format(data.n_pairs);
   document.getElementById("n_total_pairs_success_perc").innerHTML = `${roundToOne((data.n_pairs_success / data.n_pairs) * 100)}%`;
   document.getElementById("n_total_pairs_failure_perc").innerHTML = `${roundToOne((data.n_pairs_failure / data.n_pairs) * 100)}%`;
-  document.getElementById("n_total_corrections").innerHTML = Intl.NumberFormat("en-US").format(data.n_corrected_p5 + data.n_corrected_p7 + data.n_corrected_ligation + data.n_corrected_rt + data.n_corrected_hashing);
+  document.getElementById("n_total_corrections").innerHTML = Intl.NumberFormat("en-US").format((data.ignore_p5 ? 0 : data.n_corrected_p5) + (data.ignore_p7 ? 0 : data.n_corrected_p7) + data.n_corrected_ligation + data.n_corrected_rt + data.n_corrected_hashing);
   document.getElementById("n_total_cells").innerHTML = Intl.NumberFormat("en-US").format(total_estimated_cells);
 
   // Set the n_total_pairs_success_perc_bar width
@@ -186,8 +198,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // Generate the data for the doughnut chart.
 function buildCorrectableBarcodesDoughnutData(data) {
   const specs = [
-    { label: "p5", key: "n_corrected_p5", color: "#d63939" },
-    { label: "p7", key: "n_corrected_p7", color: "#1f77b4" },
+    { label: "p5", key: "n_corrected_p5", color: "#d63939", ignore: data.ignore_p5 },
+    { label: "p7", key: "n_corrected_p7", color: "#1f77b4", ignore: data.ignore_p7 },
     { label: "ligation", key: "n_corrected_ligation", color: "#ff7f0e" },
     { label: "RT", key: "n_corrected_rt", color: "#2ca02c" },
     { label: "hashing", key: "n_corrected_hashing", color: "#9467bd" },
@@ -197,8 +209,9 @@ function buildCorrectableBarcodesDoughnutData(data) {
   const values = [];
   const colors = [];
 
-  for (const { label, key, color } of specs) {
-    // Get the count for this label and skip if zero or invalid.
+  for (const { label, key, color, ignore } of specs) {
+    // Skip ignored barcodes or zero/invalid counts.
+    if (ignore) continue;
     const v = Number(data?.[key] ?? 0);
     if (!Number.isFinite(v) || v === 0) continue;
 
@@ -1016,12 +1029,13 @@ document.addEventListener("DOMContentLoaded", function () {
 function build_uncorrectables_sankey_links(uncorrectables) {
   if(!Array.isArray(uncorrectables)) return [];
   // keys and user-visible labels for each entry in the "(True, False, ...)" tuple.
+  // idx tracks the position in the original 4-element boolean tuple.
   const dims = [
-    { key: "p5", label: "p5" },
-    { key: "p7", label: "p7" },
-    { key: "ligation", label: "ligation" },
-    { key: "rt", label: "RT" },
-  ];
+    { key: "p5", label: "p5", idx: 0 },
+    { key: "p7", label: "p7", idx: 1 },
+    { key: "ligation", label: "ligation", idx: 2 },
+    { key: "rt", label: "RT", idx: 3 },
+  ].filter(d => !(d.key === "p5" && data.ignore_p5) && !(d.key === "p7" && data.ignore_p7));
 
   // Helper to parse tuple strings like "(True, False, True, True)" into [true, false, true, true]
   const parseTuple = (tupleStr) =>
@@ -1034,14 +1048,14 @@ function build_uncorrectables_sankey_links(uncorrectables) {
   for (const item of uncorrectables) {
     const value = Number(item?.value ?? 0);
     const bools = parseTuple(item?.source);
-    if (bools.length !== dims.length) continue;
+    if (bools.length !== 4) continue;
 
     // Unique group ID for this source
     const groupId = String(item.source).replace(/\s+/g, "");
 
     let from = "Total Bad reads";
     for (let i = 0; i < dims.length; i++) {
-      const to = `${bools[i] ? "Good" : "Bad"} ${dims[i].label}`;
+      const to = `${bools[dims[i].idx] ? "Good" : "Bad"} ${dims[i].label}`;
       links.push({ from, to, value, id: `${groupId}-${i}` });
       from = to;
     }

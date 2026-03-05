@@ -451,6 +451,9 @@ def combine_logs(path_pickle, path_star, path_hashing, path_benchmarks):
         qc_json["p5_index_counts"] = transform_plate_counts(qc["p5_index_counts"])
         qc_json["p7_index_counts"] = transform_plate_counts(qc["p7_index_counts"])
 
+        qc_json["ignore_p5"] = bool(qc["ignore_p5"])
+        qc_json["ignore_p7"] = bool(qc["ignore_p7"])
+
         # Transform the rt_barcode_counts dictionary to a list of dictionaries.
         qc_json["rt_barcode_counts"] = {}
 
