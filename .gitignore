@@ -168,3 +168,6 @@ workflow/examples/test_output/
 tests/integration/node_modules/
 tests/integration/data
 tests/integration/*/output
+
+# Due to some clusters blocking anaconda we don't want to commit a conda env pin
+workflow/envs/sci-rocket.linux-64.pin.txt
