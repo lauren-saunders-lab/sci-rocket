@@ -11,9 +11,8 @@ dependencies:
   - bioconda::fastq-fix-i5>=1.0.0
   - bioconda::seqkit>=2.8.2
   - bioconda::pysam>=0.22.0
-  
   # Python and required modules.
-  - conda-forge::python==3.13
+  - conda-forge::python==3.11,<3.13
   - conda-forge::numpy>=1.26.0
   - conda-forge::pandas>=2.1.3
   - conda-forge::rich>=13.7.0
