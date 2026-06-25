@@ -63,9 +63,13 @@ rule split_reads:
         # Stream per-run gzipped fastqs into seqkit split2 via a named fifo.
         # cat-ing gzip files yields a valid multi-member gzip stream, and the
         # .fastq.gz suffix on the fifo path makes seqkit emit gzipped chunks.
+        LOCAL_SPLIT="{resources.tmpdir}/split_{wildcards.experiment_name}_{wildcards.read}"
+        mkdir -p "$LOCAL_SPLIT"
+        mkdir -p "{params.out_dir}"
+
         fifo="$(mktemp -u --suffix=.fastq.gz)"
         mkfifo "$fifo"
-        trap 'rm -f "$fifo"' EXIT
+        trap 'rm -f "$fifo"; rm -rf "$LOCAL_SPLIT"' EXIT
 
         cat {input.fastqs:q} > "$fifo" &
         cat_pid=$!
@@ -73,11 +77,13 @@ rule split_reads:
         seqkit split2 \
           -p {params.n_parts} \
           -j {threads} \
-          -O {params.out_dir:q} \
+          -O "$LOCAL_SPLIT" \
           --by-part-prefix "{wildcards.read}_" \
           "$fifo"
 
         wait "$cat_pid"
+
+        mv "$LOCAL_SPLIT"/*.fastq.gz "{params.out_dir}/"
         """
 
 # ---- Helper for explicit per-sample scatter outputs in demultiplex_fastq_split. ----
@@ -118,7 +124,7 @@ rule demultiplex_fastq_split:
         """
         exec > "{log}" 2>&1
         set -euo pipefail
-        python {workflow.basedir}/scripts/demultiplexing/demux_rocket.py \
+        $CONDA_PREFIX/bin/python {workflow.basedir}/scripts/demultiplexing/demux_rocket.py \
         --experiment_name {wildcards.experiment_name} \
         --samples {params.path_samples} \
         --barcodes {params.path_barcodes} \
@@ -186,7 +192,7 @@ rule gather_demultiplexed_sequencing:
         exec > "{log}" 2>&1
         set -euo pipefail
         # Combine pickles.
-        python {workflow.basedir}/scripts/demultiplexing/demux_gather.py --path_demux_scatter {params.path_demux_scatter} --path_out {output.qc}
+        $CONDA_PREFIX/bin/python {workflow.basedir}/scripts/demultiplexing/demux_gather.py --path_demux_scatter {params.path_demux_scatter} --path_out {output.qc}
 
         # Combine the sequencing-specific R1/R2 discarded reads and logs.
         cat {input.discard_R1} > {output.R1_discarded}

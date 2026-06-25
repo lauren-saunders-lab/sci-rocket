@@ -158,6 +158,11 @@ rule starSolo_align:
         """
         exec > "{log}" 2>&1
         set -euo pipefail
+
+        LOCAL_STAR="{resources.tmpdir}/star_{wildcards.sample_name}_{wildcards.species}"
+        mkdir -p "$LOCAL_STAR"
+        mkdir -p "$(dirname {params.sampleName})"
+
         STAR {params.extra} --genomeDir {input.index} --runThreadN {threads} \
         --readFilesIn {input.R2} {input.R1} --readFilesCommand zcat \
         --soloFeatures {params.solo_features} \
@@ -167,12 +172,20 @@ rule starSolo_align:
         --soloCBposition 0_0_0_9 0_10_0_19 0_20_0_29 0_30_0_39 --soloUMIposition 0_40_0_47 \
         --soloCBwhitelist {input.whitelist_p7} {input.whitelist_p5} {input.whitelist_ligation} {input.whitelist_rt} \
         --soloCellFilter CellRanger2.2 {params.n_expected_cells} 0.99 10 \
-        --outTmpDir {output.dir_tmp} \
-        --outTmpKeep all \
-        --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.sampleName}
+        --outTmpDir "$LOCAL_STAR/__STARtmp" \
+        --outTmpKeep None \
+        --outSAMtype BAM SortedByCoordinate --outFileNamePrefix "$LOCAL_STAR/"
 
-        # Convert STARSolo barcodes to the barcode naming scheme for all configured features.
-        python3 {workflow.basedir}/scripts/demultiplexing/STARSolo_convertBarcodes.py --solo_out_dir {output.dir_solo} --features {params.solo_features} --barcodes {params.path_barcodes}
+        mv "$LOCAL_STAR/Aligned.sortedByCoord.out.bam" {output.bam}
+        mv "$LOCAL_STAR/SJ.out.tab" {output.sj}
+        mv "$LOCAL_STAR/Log.final.out" {output.log1}
+        mv "$LOCAL_STAR/Log.out" {output.log2}
+        mv "$LOCAL_STAR/Log.progress.out" {output.log3}
+        cp -r "$LOCAL_STAR/Solo.out" {output.dir_solo}
+        mkdir -p {output.dir_tmp}
+        rm -rf "$LOCAL_STAR"
+
+        $CONDA_PREFIX/bin/python3 {workflow.basedir}/scripts/demultiplexing/STARSolo_convertBarcodes.py --solo_out_dir {output.dir_solo} --features {params.solo_features} --barcodes {params.path_barcodes}
         """
 
 

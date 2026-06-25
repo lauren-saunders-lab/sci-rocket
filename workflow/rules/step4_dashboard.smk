@@ -43,7 +43,7 @@ rule scanpy_preliminary_umap:
         """
         exec > "{log}" 2>&1
         set -euo pipefail
-        python3 {workflow.basedir}/scripts/demultiplexing/scanpy_preliminary_umap.py \
+        $CONDA_PREFIX/bin/python3 {workflow.basedir}/scripts/demultiplexing/scanpy_preliminary_umap.py \
         --path_star {params.path_star} \
         --sample {wildcards.sample_name} \
         --path_out {output} \
@@ -83,7 +83,7 @@ rule sci_dash:
         cp -R {workflow.basedir}/scirocket-dash/* {output.dash_folder}
 
         # Combine the sample-specific QC and STARSolo metrics.
-        python3 {workflow.basedir}/scripts/demultiplexing/demux_dash.py \
+        $CONDA_PREFIX/bin/python3 {workflow.basedir}/scripts/demultiplexing/demux_dash.py \
         --path_out {output.dash_json} \
         --path_pickle {input.qc} \
         --path_star {params.path_star} \
@@ -91,7 +91,7 @@ rule sci_dash:
         --path_benchmarks {params.benchmarks_folder} \
         --solo_features {params.solo_features:q}
 
-        python3 {workflow.basedir}/scripts/demultiplexing/build_umap_data_js.py \
+        $CONDA_PREFIX/bin/python3 {workflow.basedir}/scripts/demultiplexing/build_umap_data_js.py \
         --path_out {output.dash_umap_json} \
         --path_inputs {input.umaps}
 
