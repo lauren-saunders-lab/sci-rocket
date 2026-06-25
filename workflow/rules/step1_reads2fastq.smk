@@ -36,6 +36,9 @@ def get_fake_aviti_manifest():
     return f"[Samples]\nSampleName,Index1,Index2,Lane\nfake,AAAAAAAAAA,AAAAAAAAAA,{lane_field}\n"
 
 
+localrules: install_bases2fastq
+
+
 rule install_bases2fastq:
     output:
         bases2fastq_exe=out("resources/bases2fastq/bases2fastq"),
@@ -56,11 +59,19 @@ rule install_bases2fastq:
             echo "Using Bases2Fastq found on PATH: $found_exe"
             ln -sf "$found_exe" {output.bases2fastq_exe}
         else
-            echo "Downloading latest release of Bases2Fastq executable"
+            echo "Attempting to download latest Bases2Fastq release..."
             tmpdir=$(mktemp -d)
-            curl -L https://bases2fastq-release.s3.amazonaws.com/bases2fastq-latest.tar.gz -o "$tmpdir/bases2fastq.tar.gz"
-            tar -xvf "$tmpdir/bases2fastq.tar.gz" -C "$tmpdir"
-            install -m 0755 "$tmpdir/bases2fastq" {output.bases2fastq_exe}
+            if curl --max-time 60 -fL https://bases2fastq-release.s3.amazonaws.com/bases2fastq-latest.tar.gz \
+  -o "$tmpdir/bases2fastq.tar.gz"; then
+                tar -xvf "$tmpdir/bases2fastq.tar.gz" -C "$tmpdir"
+                bases2fastq_bin=$(find "$tmpdir" -type f -name "bases2fastq" | head -1)
+                install -m 0755 "$bases2fastq_bin" {output.bases2fastq_exe}
+                echo "Bases2Fastq downloaded and installed successfully."
+            else
+                echo "Warning: download failed. Creating stub (AVITI only; fix with bases2fastq_exe in config)."
+                printf '#!/bin/bash\necho "ERROR: bases2fastq not installed. Required for AVITI data. Set bases2fastq_exe in config." >&2\nexit 1\n' > {output.bases2fastq_exe}
+                chmod +x {output.bases2fastq_exe}
+            fi
             rm -rf "$tmpdir"
         fi
         """
