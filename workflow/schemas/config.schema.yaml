@@ -122,6 +122,14 @@ properties:
           - 131072
         type: integer
         minimum: 1
+      ignore_p7:
+        title: "Ignore p7 Index"
+        description: "If true, skip matching the sequenced i7 index during demultiplexing and assign the single p7 well configured in the sample sheet directly. Use when the i7 read is unreliable (e.g. low-complexity/high-N) and only one p7 well is used across the whole experiment. Requires exactly one p7 well configured per experiment; the workflow errors otherwise. Default: false."
+        examples:
+          - false
+          - true
+        type: boolean
+        default: false
       bases2fastq_exe:
         title: "bases2fastq Executable Path"
         description: "Path to a local bases2fastq executable. If empty, sci-rocket uses bases2fastq on PATH when available, otherwise downloads the latest release."

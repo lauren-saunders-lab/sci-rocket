@@ -386,6 +386,7 @@ def sciseq_sample_demultiplexing(
     path_r1: str,
     path_r2: str,
     path_out: str,
+    ignore_p7: bool = False,
 ):
     """
     Performs demultiplexing of the raw fastq files based on the PCR indexes (p5, p7) and RT barcode to produce sample-specific R1 and R2 files.
@@ -406,6 +407,9 @@ def sciseq_sample_demultiplexing(
         path_r1 (str): Path to R1 fastq file.
         path_r2 (str): Path to R2 fastq file.
         path_out (str): Path to output directory.
+        ignore_p7 (bool): If True, skip matching the sequenced i7 index and assign the single
+            p7 well configured for this experiment directly. Requires exactly one p7 well to be
+            configured across all samples in the experiment.
     Returns:
         None
     """
@@ -420,6 +424,20 @@ def sciseq_sample_demultiplexing(
 
     # Generate the barcode dictionaries.
     dict_barcodes = init_barcode_dict(barcodes, samples_exp, experiment_name)
+
+    # If ignoring p7, resolve the single configured p7 well up front (the sequenced i7 index is not used).
+    fixed_p7_name = None
+    if ignore_p7:
+        if len(dict_barcodes["p7"]) != 1:
+            log.error(
+                "settings.ignore_p7 is enabled but experiment '%s' has %d distinct p7 well(s) configured; "
+                "ignore_p7 requires exactly one shared p7 well across all samples in the experiment.",
+                experiment_name,
+                len(dict_barcodes["p7"]),
+            )
+            sys.exit(1)
+        fixed_p7_name = next(iter(dict_barcodes["p7"].values()))
+        log.info("settings.ignore_p7 is enabled: assigning all reads to p7 well '%s' without matching the sequenced i7 index.", fixed_p7_name)
 
     # Generate the sample dictionary.
     dict_samples = generate_sample_dict(samples_exp, barcodes)
@@ -445,7 +463,10 @@ def sciseq_sample_demultiplexing(
         
         # Retrieve the sci-seq barcodes from R1.
         x.determine_p5(dict_barcodes["p5"])
-        x.determine_p7(dict_barcodes["p7"])
+        if ignore_p7:
+            x.set_p7_ignored(fixed_p7_name)
+        else:
+            x.determine_p7(dict_barcodes["p7"])
         x.determine_ligation(dict_barcodes["ligation"])
         x.determine_rt(dict_barcodes["rt"])
         x.determine_umi()
@@ -615,6 +636,12 @@ def main(arguments):
     parser.add_argument("--samples", required=True, type=str, help="(str) Path to sample-sheet.")
     parser.add_argument("--barcodes", required=True, type=str, help="(str) Path to barcodes file.")
     parser.add_argument("--out", required=True, type=str, help="(str) Path to output directory.")
+    parser.add_argument(
+        "--ignore_p7",
+        action="store_true",
+        default=False,
+        help="(flag) Skip matching the sequenced i7 index and assign the single p7 well configured for the experiment directly. Requires exactly one p7 well across all samples in the experiment.",
+    )
     parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="Display help and exit.")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="Display version and exit.")
 
@@ -643,6 +670,7 @@ def main(arguments):
         path_r1=args.r1,
         path_r2=args.r2,
         path_out=args.out,
+        ignore_p7=args.ignore_p7,
     )
 
 

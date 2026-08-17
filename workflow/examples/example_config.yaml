@@ -44,6 +44,10 @@ settings:
   bcl2fastq: "--barcode-mismatches 1 --ignore-missing-positions --ignore-missing-controls --ignore-missing-filter --ignore-missing-bcls --no-lane-splitting --minimum-trimmed-read-length 15 --mask-short-adapter-reads 15"
   # Optional comma-delimited list of lane IDs for BCL/Bases2Fastq conversion. If empty, BCL uses all lanes, AVITI defaults to 1+2.
   sequencing_lanes: ""
+  # If true, skip matching the sequenced i7 index and assign the single p7 well configured in the sample sheet directly.
+  # Use when the i7 read is unreliable (e.g. low-complexity/high-N) and only one p7 well is used across the experiment.
+  # Requires exactly one p7 well configured per experiment.
+  ignore_p7: false
   # Custom settings for fastp.
   fastp: "--detect_adapter_for_pe --qualified_quality_phred 15 --dont_eval_duplication --length_required 10"
   # Custom settings for STAR genome preparation (if empty, sci-rocket will set this to `--sjdbOverhang <R2_read_length - 1>`)

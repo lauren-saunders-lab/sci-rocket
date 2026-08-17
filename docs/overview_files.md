@@ -25,6 +25,7 @@ See [example sample-sheet](https://github.com/lauren-saunders-lab/sci-rocket/blo
 >   * p7 (1 row): `G01:G12`
 >   * p7 (1.5 rows): `G01:G12,H01:H06`
 >   * p7 (2 rows): `G01:G12,H01:H12`
+> * If the sequenced i7 index is unreliable (e.g. low-complexity/high-N reads) and only a single p7 well is used across the whole experiment, set `settings.ignore_p7: true` in the config to assign that well directly without matching it against the sequenced index. This requires every sample in the experiment to reference the same single p7 well.
 > * The **rt** is used to denote the RT barcode belonging to a particular sample / cell. The indexes are translated to all relevant combinations within the sequencing-run. To specify one or multiple RT strips, use the following format:
 >   * One RT: `P01-A01`
 >   * Multiple RT (1 row): `P01-A01:P01-A12`

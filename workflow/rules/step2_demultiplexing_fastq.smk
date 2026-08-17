@@ -112,6 +112,7 @@ rule demultiplex_fastq_split:
         path_samples=config["path_samples"],
         path_barcodes=config["path_barcodes"],
         path_out=out("{experiment_name}/demux_reads_scatter/{scatteritem}"),
+        ignore_p7_flag="--ignore_p7" if config["settings"].get("ignore_p7", False) else "",
     conda:
         "../envs/sci-rocket.yaml",
     shell:
@@ -123,7 +124,8 @@ rule demultiplex_fastq_split:
         --samples {params.path_samples} \
         --barcodes {params.path_barcodes} \
         --r1 {input.R1} --r2 {input.R2} \
-        --out {params.path_out}
+        --out {params.path_out} \
+        {params.ignore_p7_flag}
         """
 
 
