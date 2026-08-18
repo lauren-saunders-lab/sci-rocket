@@ -426,6 +426,7 @@ def sciseq_sample_demultiplexing(
     dict_barcodes = init_barcode_dict(barcodes, samples_exp, experiment_name)
 
     # If ignoring p7, resolve the single configured p7 well up front (the sequenced i7 index is not used).
+    fixed_p7_sequence = None
     fixed_p7_name = None
     if ignore_p7:
         if len(dict_barcodes["p7"]) != 1:
@@ -436,8 +437,8 @@ def sciseq_sample_demultiplexing(
                 len(dict_barcodes["p7"]),
             )
             sys.exit(1)
-        fixed_p7_name = next(iter(dict_barcodes["p7"].values()))
-        log.info("settings.ignore_p7 is enabled: assigning all reads to p7 well '%s' without matching the sequenced i7 index.", fixed_p7_name)
+        fixed_p7_sequence, fixed_p7_name = next(iter(dict_barcodes["p7"].items()))
+        log.info("settings.ignore_p7 is enabled: assigning all reads to p7 well '%s' (%s) without matching the sequenced i7 index.", fixed_p7_name, fixed_p7_sequence)
 
     # Generate the sample dictionary.
     dict_samples = generate_sample_dict(samples_exp, barcodes)
@@ -464,7 +465,7 @@ def sciseq_sample_demultiplexing(
         # Retrieve the sci-seq barcodes from R1.
         x.determine_p5(dict_barcodes["p5"])
         if ignore_p7:
-            x.set_p7_ignored(fixed_p7_name)
+            x.set_p7_ignored(fixed_p7_sequence, fixed_p7_name)
         else:
             x.determine_p7(dict_barcodes["p7"])
         x.determine_ligation(dict_barcodes["ligation"])

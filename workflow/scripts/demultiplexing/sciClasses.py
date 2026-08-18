@@ -251,19 +251,24 @@ class sciRecord:
                 self.p7_status = "Corrected"
                 self.p7_sequence = p7_sequence
 
-    def set_p7_ignored(self, p7_name):
+    def set_p7_ignored(self, p7_sequence, p7_name):
         """
         Assign the p7 barcode directly, without matching it against the sequenced i7 index.
         Used when the i7 read is unreliable (e.g. low-complexity/high-N) and a single p7 well
         is shared across the whole experiment, so the sequenced index carries no information.
 
         Parameters:
+            p7_sequence (str): The canonical sequence of the single p7 well configured for this experiment.
             p7_name (str): The single p7 well name configured for this experiment.
 
         Sets:
             p7_name (str): Name of the p7 barcode.
             p7_status (str): Status of the p7 barcode ("Ignored").
+            p7_sequence (str): Canonical sequence of the p7 barcode (replaces the raw sequenced index,
+                since this is what gets written into the cellular barcode and matched against the
+                STARSolo whitelist downstream).
         """
+        self.p7_sequence = p7_sequence
         self.p7_name = p7_name
         self.p7_status = "Ignored"
 
