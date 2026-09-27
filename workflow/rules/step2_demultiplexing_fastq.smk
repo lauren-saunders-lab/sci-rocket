@@ -46,6 +46,9 @@ rule split_reads:
     threads: 5
     resources:
         mem_mb=1024 * 10,
+        # A 65GB-compressed R2 measured 1h44m; the profile's 2h default left no
+        # margin and timed out.
+        runtime=240,
     log:
         out("logs/step2_demultiplexing_reads/split_{experiment_name}_{read}.log"),
     benchmark:
@@ -176,7 +179,11 @@ rule gather_demultiplexed_sequencing:
         out("logs/step2_demultiplexing_reads/gather_demultiplexed_sequencing_{experiment_name}.log"),
     threads: 1
     resources:
-        mem_mb=1024 * 10,
+        # Peak scales with the combined QC pickle, dominated by the per-cell-
+        # barcode sets of distinct hashing UMIs. A 1.3B-read-pair run was
+        # OOM-killed at 10GB (benchmarks undercount: they sample periodically
+        # and miss the load spike).
+        mem_mb=1024 * 24,
     benchmark:
         out("benchmarks/{experiment_name}/gather_demultiplexed_sequencing.txt")
     params:

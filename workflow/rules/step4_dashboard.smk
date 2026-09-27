@@ -64,7 +64,10 @@ rule sci_dash:
         out("logs/step4_dashboard/sci_dash_{experiment_name}.log"),
     threads: 1
     resources:
-        mem_mb=1024 * 10,
+        # Loads the whole combined QC pickle at once (gather builds it
+        # incrementally, so this peaks higher): measured 13.4GB on a
+        # 1.3B-read-pair run, OOM-killed at 10GB.
+        mem_mb=1024 * 32,
     benchmark:
         out("benchmarks/{experiment_name}/sci_dash.txt")
     params:
